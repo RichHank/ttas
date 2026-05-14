@@ -1,0 +1,144 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #09100f;
+  color: #f1f6f3;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+.shell {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(120, 220, 202, 0.10), rgba(9, 16, 15, 0) 260px),
+    #09100f;
+}
+
+.topbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 28px 14px;
+  border-bottom: 1px solid rgba(241, 246, 243, 0.10);
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.brand p {
+  margin: 5px 0 0;
+  color: #a9bbb5;
+  font-size: 14px;
+}
+
+.metric-strip {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.metric {
+  min-width: 120px;
+  padding: 9px 11px;
+  border: 1px solid rgba(241, 246, 243, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.metric span {
+  display: block;
+  color: #a9bbb5;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.metric strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 17px;
+}
+
+.tabs {
+  padding: 12px 18px 0;
+}
+
+.tab {
+  background: #101a18 !important;
+  color: #a9bbb5 !important;
+  border: 1px solid rgba(241, 246, 243, 0.10) !important;
+  border-radius: 8px 8px 0 0 !important;
+  padding: 10px 12px !important;
+}
+
+.tab--selected {
+  background: #172621 !important;
+  color: #f1f6f3 !important;
+  border-top: 2px solid #78dcca !important;
+}
+
+.workspace {
+  padding: 16px 24px 28px;
+}
+
+.control-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.control {
+  border: 1px solid rgba(241, 246, 243, 0.10);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 10px;
+}
+
+.control label {
+  display: block;
+  color: #a9bbb5;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.control input {
+  width: 100%;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid rgba(241, 246, 243, 0.16);
+  background: #0f1816;
+  color: #f1f6f3;
+  padding: 0 9px;
+}
+
+.graph-frame {
+  min-height: 72vh;
+  border: 1px solid rgba(241, 246, 243, 0.10);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #09100f;
+}
+
+@media (max-width: 850px) {
+  .topbar {
+    display: block;
+    padding: 18px;
+  }
+
+  .metric-strip {
+    justify-content: flex-start;
+    margin-top: 14px;
+  }
+
+  .control-row {
+    grid-template-columns: 1fr;
+  }
+}

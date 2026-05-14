@@ -1,0 +1,11 @@
+services:
+  ttas:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8050:8050"
+    volumes:
+      - ../outputs:/app/outputs
+    environment:
+      - FRED_API_KEY=${FRED_API_KEY:-}

@@ -1,0 +1,35 @@
+name: ttas
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - plotly
+  - dash
+  - networkx
+  - geopandas
+  - shapely
+  - pyproj
+  - rust
+  - cargo
+  - cmake
+  - pip:
+      - umap-learn
+      - pydiffmap
+      - ripser
+      - persim
+      - kmapper
+      - fredapi
+      - osmnx
+      - econml
+      - dowhy
+      - tigramite
+      - astropy
+      - kaleido
+      - multipers
+      - giotto-tda
