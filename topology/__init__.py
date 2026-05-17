@@ -7,6 +7,8 @@ from .invariants import (
     persistence_diagrams,
     persistence_entropy,
 )
+from .multiparameter import MultiparameterResult, compute_multiparameter_persistence
+from .silhouettes import betti_curve, compute_silhouette_suite, persistence_silhouette
 
 __all__ = [
     "FiltrationResult",
@@ -15,4 +17,9 @@ __all__ = [
     "euler_characteristic_surface",
     "persistence_diagrams",
     "persistence_entropy",
+    "MultiparameterResult",
+    "compute_multiparameter_persistence",
+    "betti_curve",
+    "compute_silhouette_suite",
+    "persistence_silhouette",
 ]

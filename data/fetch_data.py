@@ -183,6 +183,8 @@ class TulsaDataConfig:
     cache_dir: Path = Path("outputs/cache")
     filename: str = "tulsa_manifold.csv"
     fred_api_key: str | None = None
+    use_public_data: bool = False
+    use_osmnx: bool = False
 
     @property
     def cache_path(self) -> Path:
@@ -364,15 +366,55 @@ def _regime_hint(month_number: int) -> str:
     return "Opportunity"
 
 
+def get_data_mode() -> str:
+    """Report whether real public data is active.
+
+    Returns "real_public_data" when at least one real source has been loaded,
+    or "synthetic_fallback" when using purely synthetic data.
+    """
+    try:
+        from .real_data import get_data_mode as _get_mode
+        return _get_mode()
+    except Exception:
+        return "synthetic_fallback"
+
+
 def load_or_create_dataset(config: TulsaDataConfig | None = None, refresh: bool = False) -> pd.DataFrame:
-    """Load a cached manifold or generate it locally."""
+    """Load a cached manifold or generate it locally.
+
+    When real public data is available (via scripts/build_dataset.py), the
+    synthetic manifold is calibrated to track real aggregate metrics. When no
+    real data exists, a fully synthetic Tulsa-calibrated manifold is used.
+    """
 
     config = config or TulsaDataConfig(fred_api_key=os.getenv("FRED_API_KEY"))
     config.cache_dir.mkdir(parents=True, exist_ok=True)
     if config.cache_path.exists() and not refresh:
         df = pd.read_csv(config.cache_path, parse_dates=["date"])
         return df
+
     df = generate_tulsa_manifold(config)
+
+    # Try real-data calibration (replaces synthetic aggregates with real ones)
+    data_mode = get_data_mode()
+    if data_mode == "real_public_data":
+        try:
+            from .real_data import calibrate_synthetic_from_real
+
+            df = calibrate_synthetic_from_real(df)
+            df["public_data_notes"] = "Real public data calibrating synthetic manifold."
+        except Exception as exc:
+            df["public_data_notes"] = f"Real-data calibration skipped: {exc}"
+    elif config.use_public_data:
+        try:
+            from .real_data import enrich_with_public_sources
+
+            df = enrich_with_public_sources(df, fred_api_key=config.fred_api_key, use_osmnx=config.use_osmnx)
+        except Exception as exc:
+            df["public_data_notes"] = f"Public-data enrichment skipped: {exc}"
+    else:
+        df["public_data_notes"] = "Synthetic Tulsa-calibrated manifold (no real data sources active)."
+
     df.to_csv(config.cache_path, index=False)
     return df
 

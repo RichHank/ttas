@@ -1,0 +1,12 @@
+{
+  "source": "Realtor.com Research Data",
+  "files_found": 3,
+  "files_imported": 3,
+  "files_failed": [],
+  "geography_types": [
+    "metro",
+    "unknown"
+  ],
+  "path": "C:\\Users\\Right\\.codex\\ttas\\data\\processed\\realtor_monthly.csv",
+  "row_count": 119
+}

@@ -1,0 +1,59 @@
+{
+  "dataset_name": "Tulsa Housing Market Dataset",
+  "mode": "real_public_data",
+  "last_updated": "2026-05-14T03:12:00Z",
+  "sources": [
+    {
+      "name": "FRED (Federal Reserve Economic Data)",
+      "fields": [
+        "30_year_mortgage_rate",
+        "cpi_all_urban",
+        "unemployment_rate",
+        "median_sales_price_us"
+      ],
+      "geography": "National (US), some Tulsa-specific series",
+      "frequency": "monthly",
+      "status": "available",
+      "path": "C:\\Users\\Right\\.codex\\ttas\\data\\processed\\fred_monthly.csv"
+    },
+    {
+      "name": "Census ACS 5-Year Estimates",
+      "fields": [
+        "median_household_income",
+        "owner_occupied_share",
+        "median_home_value",
+        "rent_burden_count"
+      ],
+      "geography": "Tulsa County + ZIP Code Tabulation Areas",
+      "frequency": "annual (most recent: 2023)",
+      "status": "available",
+      "path": ""
+    },
+    {
+      "name": "Realtor.com Research Data",
+      "fields": [
+        "median_listing_price",
+        "median_rent",
+        "active_listing_count",
+        "median_days_on_market"
+      ],
+      "geography": "Tulsa metro / county / ZIP ([])",
+      "frequency": "monthly",
+      "status": "available \u2014 1/1 files imported",
+      "path": "C:\\Users\\Right\\.codex\\ttas\\data\\processed\\realtor_monthly.csv"
+    },
+    {
+      "name": "Tulsa County Assessor / City of Tulsa Open Data",
+      "fields": [
+        "parcel_assessed_value",
+        "property_class",
+        "last_sale_date"
+      ],
+      "geography": "Tulsa County parcels",
+      "frequency": "as-available",
+      "status": "planned \u2014 not yet integrated"
+    }
+  ],
+  "synthetic_data_active": false,
+  "synthetic_note": null
+}

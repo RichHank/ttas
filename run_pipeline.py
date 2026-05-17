@@ -1,4 +1,4 @@
-"""Run the TTAS data, topology, causal, and decision pipeline locally."""
+"""Run the TTAS data, topology, counterfactual, and decision pipeline locally."""
 
 from __future__ import annotations
 
@@ -14,9 +14,12 @@ from data.fetch_data import TulsaDataConfig, load_or_create_dataset
 from data.preprocess import add_topological_parameters
 from decision.opportunity_mapper import build_opportunity_graph
 from decision.path_integral import UserBiography, buy_signal
-from decision.phase_transition import euler_curvature_alert, infer_market_regime
+from decision.phase_transition import euler_curvature_alert, predict_regime_with_gp, train_gp_regime_classifier
+from decision.topological_boundary import compute_topological_boundary
 from topology.causal_tda import topological_ate, transfer_entropy
 from topology.invariants import compute_time_slice_invariants
+from topology.multiparameter import compute_multiparameter_persistence
+from topology.silhouettes import compute_silhouette_suite
 from topology.vineyards import bayesian_blocks_change_points, compute_sliding_window_vineyards, vineyard_tracks
 
 
@@ -42,6 +45,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     config = TulsaDataConfig(
         properties_per_zip_month=args.properties_per_zip_month,
         cache_dir=cache,
+        use_public_data=args.use_public_data,
+        use_osmnx=args.use_osmnx,
     )
     raw = load_or_create_dataset(config=config, refresh=args.refresh)
     enriched = add_topological_parameters(raw)
@@ -56,6 +61,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     invariants["signed_barcodes"].to_csv(cache / "signed_barcodes_latest.csv", index=False)
     invariants["rank_h0"].to_csv(cache / "rank_invariant_h0_latest.csv", index=False)
     invariants["rank_h1"].to_csv(cache / "rank_invariant_h1_latest.csv", index=False)
+    multiparameter = compute_multiparameter_persistence(invariants["filtration"], grid_size=args.grid_size)
+    multiparameter.signed_measure.to_csv(cache / "multiparameter_signed_measure.csv", index=False)
+    multiparameter.hilbert_frame.to_csv(cache / "multiparameter_hilbert_function.csv", index=False)
+    multiparameter.rank_frame.to_csv(cache / "multiparameter_rank_invariant.csv", index=False)
 
     sequence, diagrams = compute_sliding_window_vineyards(
         embedded,
@@ -72,6 +81,18 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     mapper = build_opportunity_graph(embedded[embedded["date"] == latest], n_bins=6)
     mapper["frame"].to_csv(cache / "opportunity_mapper_nodes.csv", index=False)
 
+    silhouettes = compute_silhouette_suite(embedded, current_date=latest, max_points=args.max_points)
+    silhouettes["frame"].to_csv(cache / "silhouettes_betti_curves.csv", index=False)
+    boundary = compute_topological_boundary(embedded, date=latest, family_size=args.family_size, max_points=max(80, args.max_points // 2))
+    boundary.to_csv(cache / "topological_decision_boundary.csv", index=False)
+    gp_model, gp_training = train_gp_regime_classifier(
+        embedded,
+        max_slices=args.gp_slices,
+        max_points=max(80, args.max_points // 2),
+        grid_size=max(5, min(args.grid_size, 8)),
+    )
+    gp_training.to_csv(cache / "gp_regime_training.csv", index=False)
+
     ate = topological_ate(embedded, shock_bps=args.shock_bps, date=latest, max_points=args.max_points)
     signal = buy_signal(
         embedded,
@@ -80,7 +101,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         max_points=args.max_points,
     )
     alert = euler_curvature_alert(invariants["euler_surface"])
-    regime = infer_market_regime(invariants["euler_surface"], rate_level=float(embedded[embedded["date"] == latest]["mortgage_rate_30y"].median()))
+    regime_prediction = predict_regime_with_gp(gp_model, invariants["euler_surface"])
+    regime = regime_prediction["regime"]
 
     rent_series = embedded.groupby("date")["rent_to_price_ratio"].median().to_numpy(dtype=float)
     buy_series = embedded.groupby("date")["affordability_index"].median().to_numpy(dtype=float)
@@ -97,7 +119,11 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         "triangles": invariants["filtration"].metadata["n_triangles"],
         "persistent_entropy_h0": invariants["persistent_entropy_h0"],
         "persistent_entropy_h1": invariants["persistent_entropy_h1"],
+        "multiparameter_backend": multiparameter.backend,
+        "multiparameter_exact": multiparameter.exact,
+        "multiparameter_error": multiparameter.error,
         "regime": regime,
+        "regime_backend": regime_prediction["backend"],
         "phase_alert": {key: value for key, value in alert.items() if key != "curvature"},
         "change_points": len(changes),
         "topological_ate_h0": ate["topological_ate_h0"],
@@ -110,6 +136,7 @@ def run(args: argparse.Namespace) -> dict[str, object]:
             "decision": signal["decision"],
             "restricted_count": signal["restricted_count"],
         },
+        "boundary_points": int(boundary["boundary"].sum()) if not boundary.empty else 0,
     }
     with (cache / "pipeline_summary.json").open("w", encoding="utf-8") as handle:
         json.dump(summary, handle, indent=2, default=_json_default)
@@ -117,9 +144,13 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if args.write_html:
         from visualizations.plots import (
             make_causal_fig,
+            make_boundary_fig,
             make_decision_fig,
             make_euler_surface_fig,
+            make_gp_regime_fig,
             make_mapper_fig,
+            make_multiparameter_fig,
+            make_silhouette_fig,
             make_spacetime_fig,
             make_vineyard_fig,
         )
@@ -130,6 +161,10 @@ def run(args: argparse.Namespace) -> dict[str, object]:
         make_mapper_fig(mapper).write_html(figures / "affordability_black_hole.html", include_plotlyjs="cdn")
         make_causal_fig(ate).write_html(figures / "causal_shock_lab.html", include_plotlyjs="cdn")
         make_decision_fig(signal).write_html(figures / "decision_boundary_navigator.html", include_plotlyjs="cdn")
+        make_multiparameter_fig(multiparameter).write_html(figures / "multiparameter_persistence_lab.html", include_plotlyjs="cdn")
+        make_silhouette_fig(silhouettes).write_html(figures / "silhouettes_and_betti_curves.html", include_plotlyjs="cdn")
+        make_boundary_fig(boundary).write_html(figures / "topological_decision_boundary.html", include_plotlyjs="cdn")
+        make_gp_regime_fig(gp_training, regime_prediction).write_html(figures / "gp_regime_classifier.html", include_plotlyjs="cdn")
 
     return summary
 
@@ -145,10 +180,51 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--income", type=float, default=92_000.0)
     parser.add_argument("--dti", type=float, default=0.38)
     parser.add_argument("--family-size", type=int, default=3)
+    parser.add_argument("--gp-slices", type=int, default=12)
+    parser.add_argument("--use-public-data", action="store_true", help="Apply available public-data enrichments.")
+    parser.add_argument("--use-osmnx", action="store_true", help="Use OSMnx spatial enrichment when --use-public-data is set.")
     parser.add_argument("--write-html", action="store_true", help="Write Plotly HTML artifacts.")
+    parser.add_argument("--validate", action="store_true", help="Run model validation and cache results.")
+    parser.add_argument("--lineage", action="store_true", help="Write data lineage metadata to cache.")
+    parser.add_argument("--report", action="store_true", help="Generate a self-contained HTML report.")
+    parser.add_argument("--full", action="store_true", help="Run the full pipeline: data, topology, validate, lineage, report.")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
-    result = run(parse_args())
+    args = parse_args()
+    result = run(args)
     print(json.dumps(result, indent=2, default=_json_default))
+
+    # Post-pipeline steps
+    root = Path(__file__).resolve().parent
+    cache = root / "outputs" / "cache"
+
+    if args.validate or args.full:
+        try:
+            from decision.validation import build_validation_dashboard_data
+            from data.fetch_data import load_or_create_dataset
+            from data.preprocess import add_topological_parameters
+            df = add_topological_parameters(load_or_create_dataset())
+            val = build_validation_dashboard_data(df)
+            with (cache / "validation.json").open("w", encoding="utf-8") as fh:
+                json.dump(val, fh, indent=2, default=_json_default)
+            print(f"Validation cached to {cache / 'validation.json'}")
+        except Exception as exc:
+            print(f"Validation failed: {exc}")
+
+    if args.lineage or args.full:
+        try:
+            from data.lineage import build_lineage_json
+            build_lineage_json(cache / "lineage.json")
+            print(f"Lineage cached to {cache / 'lineage.json'}")
+        except Exception as exc:
+            print(f"Lineage failed: {exc}")
+
+    if args.report or args.full:
+        try:
+            from scripts.generate_report import build_report
+            path = build_report()
+            print(f"Report written to {path}")
+        except Exception as exc:
+            print(f"Report failed: {exc}")

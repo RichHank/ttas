@@ -1,0 +1,17 @@
+{
+  "source": "FRED",
+  "fetched": [
+    "MORTGAGE30US",
+    "CPIAUCSL",
+    "UNRATE",
+    "MSPUS"
+  ],
+  "skipped": [],
+  "error": null,
+  "path": "C:\\Users\\Right\\.codex\\ttas\\data\\processed\\fred_monthly.csv",
+  "date_range": [
+    "1947-01-01 00:00:00",
+    "2026-05-01 00:00:00"
+  ],
+  "row_count": 953
+}

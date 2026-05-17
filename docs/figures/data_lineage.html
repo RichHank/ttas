@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TTAS — Data Lineage</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#09100f;color:#f1f6f3;font-family:Inter,"Segoe UI",Arial,sans-serif;max-width:1100px;margin:0 auto;padding:32px 28px 60px}
+h1{font-size:28px;font-weight:760;margin-bottom:4px}
+h2{font-size:20px;color:#78dcca;margin:32px 0 12px;border-bottom:1px solid rgba(241,246,243,.10);padding-bottom:6px}
+h3{font-size:15px;color:#f1f6f3;margin:0 0 8px}
+.subtitle{color:#8ba19a;font-size:14px;margin-bottom:20px}
+p{color:#c8d7d1;font-size:13px;line-height:1.55;margin-bottom:12px}
+.source-card{border:1px solid rgba(241,246,243,.10);border-radius:8px;background:rgba(255,255,255,.03);padding:16px;margin-bottom:14px}
+.source-card .meta p{margin-bottom:3px;font-size:12px}
+.source-card .meta strong{color:#a9bbb5;font-weight:650}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+th{text-align:left;padding:10px 12px;color:#a9bbb5;font-size:11px;text-transform:uppercase;border-bottom:2px solid rgba(241,246,243,.14);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid rgba(241,246,243,.08);vertical-align:top}
+tr:hover td{background:rgba(255,255,255,.02)}
+
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.badge--observed{background:#78dcca;color:#07110f}
+.badge--calibrated{background:#6cb4e4;color:#07110f}
+.badge--derived{background:#c4a4e6;color:#0a0a10}
+.badge--modeled{background:rgba(247,201,72,0.22);color:#f7c948;border:1px solid rgba(247,201,72,0.35)}
+.badge--synthetic{background:rgba(255,107,107,0.18);color:#ff6b6b;border:1px solid rgba(255,107,107,0.30)}
+
+.footer{border-top:1px solid rgba(241,246,243,.10);margin-top:40px;padding-top:16px;color:#6e8a81;font-size:12px;text-align:center}
+.back-link{color:#78dcca;font-size:13px;text-decoration:none}
+.back-link:hover{text-decoration:underline}
+.source-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px;margin-bottom:20px}
+.table-wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<a href="./" class="back-link">&larr; Back to TTAS</a>
+<h1>Data Lineage</h1>
+<p class="subtitle">Per-column provenance classification for the Tulsa Housing Manifold</p>
+
+<p>Each of the 26 columns in the TTAS manifold is classified into one of five data natures. 
+This page documents where every value comes from, how it was transformed, and the confidence level of its provenance.</p>
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0">
+<span class="badge badge--observed">Observed</span>
+<span class="badge badge--calibrated">Calibrated</span>
+<span class="badge badge--derived">Derived</span>
+<span class="badge badge--modeled">Modeled</span>
+<span class="badge badge--synthetic">Synthetic</span>
+</div>
+
+<h2>Data Sources</h2>
+<div class="source-grid"><div class="source-card">
+<h3>FRED (Federal Reserve Economic Data)</h3>
+<div class="meta">
+<p><strong>Endpoint:</strong> api.stlouisfed.org/fred/series/observations</p>
+<p><strong>Pulled:</strong> 2026-05-14</p>
+<p><strong>Nature:</strong> Observed</p>
+<p><strong>Confidence:</strong> High (0.90–0.95)</p>
+<p style="margin-top:6px;font-size:12px;color:#8ba19a">953 rows, 1947–2026. Mortgage rate series is direct; CPI and unemployment are national-level context variables.</p>
+</div>
+<p style="font-family:monospace;font-size:12px;color:#78dcca">Fields: mortgage_rate_30y, cpi_all_urban, unemployment_rate, median_sales_price_us</p>
+</div><div class="source-card">
+<h3>Census ACS 5-Year Estimates</h3>
+<div class="meta">
+<p><strong>Endpoint:</strong> api.census.gov/data/2023/acs/acs5</p>
+<p><strong>Pulled:</strong> 2026-05-14</p>
+<p><strong>Nature:</strong> Observed</p>
+<p><strong>Confidence:</strong> Medium-High (0.85)</p>
+<p style="margin-top:6px;font-size:12px;color:#8ba19a">24 Tulsa ZIPs returned with null metric values. ACS 5-year estimates have 1-year lag; 2023 estimates reflect 2019–2023 data.</p>
+</div>
+<p style="font-family:monospace;font-size:12px;color:#78dcca">Fields: median_household_income, owner_occupied_share, median_home_value, rent_burden_count</p>
+</div><div class="source-card">
+<h3>Realtor.com Research Data</h3>
+<div class="meta">
+<p><strong>Endpoint:</strong> realtor.com/research/data (CSV download, not API)</p>
+<p><strong>Pulled:</strong> 2026-05-14</p>
+<p><strong>Nature:</strong> Observed (aggregates) / Calibrated (per-property)</p>
+<p><strong>Confidence:</strong> Medium-High (0.70–0.85)</p>
+<p style="margin-top:6px;font-size:12px;color:#8ba19a">Tulsa metro data, monthly. Listing prices and rents are observed; per-property values are calibrated synthetic. Data extends 2016–2026; pre-2016 values in timeseries are interpolated.</p>
+</div>
+<p style="font-family:monospace;font-size:12px;color:#78dcca">Fields: median_listing_price, median_rent, active_listing_count, median_days_on_market</p>
+</div><div class="source-card">
+<h3>OSMnx Street Network + POI</h3>
+<div class="meta">
+<p><strong>Endpoint:</strong> OpenStreetMap via osmnx Python library (on-demand)</p>
+<p><strong>Pulled:</strong> n/a (opt-in)</p>
+<p><strong>Nature:</strong> Observed (when enabled) / Synthetic (default)</p>
+<p><strong>Confidence:</strong> Medium (0.55) when enabled; Low (0.40) when synthetic</p>
+<p style="margin-top:6px;font-size:12px;color:#8ba19a">When enabled, replaces synthetic centrality and amenity with real OSM data. Not enabled by default due to network dependency.</p>
+</div>
+<p style="font-family:monospace;font-size:12px;color:#78dcca">Fields: street_centrality, amenity_density</p>
+</div><div class="source-card">
+<h3>Tulsa County Assessor / City of Tulsa Open Data</h3>
+<div class="meta">
+<p><strong>Endpoint:</strong> planned — not yet integrated</p>
+<p><strong>Pulled:</strong> n/a</p>
+<p><strong>Nature:</strong> Planned (Observed)</p>
+<p><strong>Confidence:</strong> n/a</p>
+<p style="margin-top:6px;font-size:12px;color:#8ba19a">Would provide parcel-level ground truth for property values and transaction dates. Currently not integrated.</p>
+</div>
+<p style="font-family:monospace;font-size:12px;color:#78dcca">Fields: parcel_values, property_class, sale_dates</p>
+</div></div>
+
+<h2>Per-Column Provenance</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Column</th><th>Nature</th><th>Primary Source</th><th>Confidence</th><th>Transformations</th></tr></thead>
+<tbody><tr>
+<td style="font-family:monospace;color:#78dcca">median_listing_price</td>
+<td><span class="badge badge--calibrated">Calibrated</span></td>
+<td>Realtor.com Research Data</td>
+<td>70%</td>
+<td style="font-size:12px;color:#8ba19a">synthetic_generation → real_aggregate_calibration → monthly_median_scaling_to_realtor_com</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">inventory_velocity</td>
+<td><span class="badge badge--calibrated">Calibrated</span></td>
+<td>Realtor.com Research Data (days on market)</td>
+<td>70%</td>
+<td style="font-size:12px;color:#8ba19a">synthetic_generation → dom_to_velocity_conversion → real_aggregate_calibration</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">monthly_rent_estimate</td>
+<td><span class="badge badge--calibrated">Calibrated</span></td>
+<td>Realtor.com Research Data (rent) + synthetic rent-to-price model</td>
+<td>65%</td>
+<td style="font-size:12px;color:#8ba19a">synthetic_rent_to_price_ratio → real_aggregate_calibration → monthly_median_scaling</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">annual_income_estimate</td>
+<td><span class="badge badge--calibrated">Calibrated</span></td>
+<td>Census ACS (ZIP median income) + synthetic per-property noise</td>
+<td>65%</td>
+<td style="font-size:12px;color:#8ba19a">synthetic_generation → zip_income_calibration → property_noise</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">ownership_cost_monthly</td>
+<td><span class="badge badge--derived">Derived</span></td>
+<td>Computed from median_listing_price, mortgage_rate_30y, property_tax_rate</td>
+<td>80%</td>
+<td style="font-size:12px;color:#8ba19a">mortgage_annuity_formula → tax_and_insurance_estimate</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">rent_margin_monthly</td>
+<td><span class="badge badge--derived">Derived</span></td>
+<td>Computed from annual_income_estimate, dti_max, monthly_rent_estimate</td>
+<td>75%</td>
+<td style="font-size:12px;color:#8ba19a">budget_less_rent</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">buy_margin_monthly</td>
+<td><span class="badge badge--derived">Derived</span></td>
+<td>Computed from annual_income_estimate, dti_max, ownership_cost_monthly</td>
+<td>75%</td>
+<td style="font-size:12px;color:#8ba19a">budget_less_ownership_cost</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">affordability_index</td>
+<td><span class="badge badge--derived">Derived</span></td>
+<td>Computed in preprocess.py — ownership_cost / max_affordable_payment</td>
+<td>75%</td>
+<td style="font-size:12px;color:#8ba19a">affordability_gap_normalization</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">rent_to_price_ratio</td>
+<td><span class="badge badge--derived">Derived</span></td>
+<td>Computed from monthly_rent_estimate / median_listing_price</td>
+<td>70%</td>
+<td style="font-size:12px;color:#8ba19a">annualized_rent_to_price_ratio</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">rent_vs_buy</td>
+<td><span class="badge badge--modeled">Modeled</span></td>
+<td>Decision rule from buy_margin, rent_margin, opportunity score</td>
+<td>60%</td>
+<td style="font-size:12px;color:#8ba19a">threshold_rule → buy_margin_gt_-0.10*rent → opportunity_gt_0.42</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">regime_hint</td>
+<td><span class="badge badge--modeled">Modeled</span></td>
+<td>Deterministic regime classifier based on month number</td>
+<td>55%</td>
+<td style="font-size:12px;color:#8ba19a">month_index_threshold: <24 Stable, <57 Overheated, <72 Rate Shock, >=72 Opportunity</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">mortgage_rate_30y</td>
+<td><span class="badge badge--observed">Observed</span></td>
+<td>FRED MORTGAGE30US</td>
+<td>95%</td>
+<td style="font-size:12px;color:#8ba19a">api_fetch → monthly_resample → interpolate_gaps</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">cpi_all_urban</td>
+<td><span class="badge badge--observed">Observed</span></td>
+<td>FRED CPIAUCSL</td>
+<td>95%</td>
+<td style="font-size:12px;color:#8ba19a">api_fetch → monthly_resample</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">unemployment_rate</td>
+<td><span class="badge badge--observed">Observed</span></td>
+<td>FRED UNRATE</td>
+<td>95%</td>
+<td style="font-size:12px;color:#8ba19a">api_fetch → monthly_resample</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">median_sales_price_us</td>
+<td><span class="badge badge--observed">Observed</span></td>
+<td>FRED MSPUS</td>
+<td>90%</td>
+<td style="font-size:12px;color:#8ba19a">api_fetch → quarterly_to_monthly_interpolation</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">median_household_income</td>
+<td><span class="badge badge--observed">Observed</span></td>
+<td>Census ACS 5-Year Estimates (Table S1901)</td>
+<td>85%</td>
+<td style="font-size:12px;color:#8ba19a">api_fetch → zip_code_join</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">owner_occupied_share</td>
+<td><span class="badge badge--observed">Observed</span></td>
+<td>Census ACS 5-Year Estimates (Table S2502)</td>
+<td>85%</td>
+<td style="font-size:12px;color:#8ba19a">api_fetch → zip_code_join</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">median_home_value</td>
+<td><span class="badge badge--observed">Observed</span></td>
+<td>Census ACS 5-Year Estimates (Table S2502)</td>
+<td>85%</td>
+<td style="font-size:12px;color:#8ba19a">api_fetch → zip_code_join</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">school_rating</td>
+<td><span class="badge badge--synthetic">Synthetic</span></td>
+<td>Tulsa ZIP profiles (hardcoded anchors in fetch_data.py)</td>
+<td>40%</td>
+<td style="font-size:12px;color:#8ba19a">profile_lookup → micro_location_noise → clip_0_1</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">street_centrality</td>
+<td><span class="badge badge--synthetic">Synthetic</span></td>
+<td>Tulsa ZIP profiles (hardcoded anchors)</td>
+<td>40%</td>
+<td style="font-size:12px;color:#8ba19a">profile_lookup → noise → clip_0_1</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">amenity_density</td>
+<td><span class="badge badge--synthetic">Synthetic</span></td>
+<td>Tulsa ZIP profiles (hardcoded anchors)</td>
+<td>40%</td>
+<td style="font-size:12px;color:#8ba19a">profile_lookup → seasonal_adjustment → noise → clip_0_1</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">crime_index</td>
+<td><span class="badge badge--synthetic">Synthetic</span></td>
+<td>Tulsa ZIP profiles (hardcoded anchors)</td>
+<td>35%</td>
+<td style="font-size:12px;color:#8ba19a">profile_lookup → trend_adjustment → noise → clip_0_1</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">flood_risk_score</td>
+<td><span class="badge badge--synthetic">Synthetic</span></td>
+<td>Tulsa ZIP profiles (hardcoded anchors)</td>
+<td>35%</td>
+<td style="font-size:12px;color:#8ba19a">profile_lookup → seasonal_cos → noise → clip_0_1</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">walk_transit_score</td>
+<td><span class="badge badge--synthetic">Synthetic</span></td>
+<td>Computed from synthetic walk and transit components</td>
+<td>35%</td>
+<td style="font-size:12px;color:#8ba19a">weighted_combination → clip_0_1</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">economic_mobility_index</td>
+<td><span class="badge badge--synthetic">Synthetic</span></td>
+<td>Tulsa ZIP profiles (hardcoded anchors)</td>
+<td>35%</td>
+<td style="font-size:12px;color:#8ba19a">profile_lookup → trend_adjustment → noise → clip_0_1</td>
+</tr><tr>
+<td style="font-family:monospace;color:#78dcca">dti_max</td>
+<td><span class="badge badge--synthetic">Synthetic</span></td>
+<td>Beta distribution draw (a=2.2, b=3.0), scaled to [0.28, 0.47]</td>
+<td>30%</td>
+<td style="font-size:12px;color:#8ba19a">beta_sample → scale_to_range → clip</td>
+</tr></tbody>
+</table>
+</div>
+
+<div class="footer">Tulsa Topological Affordability Spacetime &middot; Not financial, legal, or appraisal advice.</div>
+</body>
+</html>

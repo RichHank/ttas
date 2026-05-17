@@ -18,6 +18,15 @@ env/
 outputs/cache/
 outputs/figures/
 
+# Raw data downloads (keep pipeline outputs tracked)
+data/raw/fred/*.csv
+data/raw/census/*.csv
+data/raw/realtor/*.csv
+data/raw/tulsa/*.csv
+data/processed/*.csv
+data/processed/*.json
+!data/processed/source_manifest.json
+
 # OS/editor noise
 .DS_Store
 Thumbs.db

@@ -208,7 +208,7 @@ def make_causal_fig(ate: dict[str, object]) -> go.Figure:
         ]
     )
     fig.update_yaxes(title_text="Wasserstein / bottleneck proxy")
-    return _layout(fig, "Causal Shock Lab")
+    return _layout(fig, "Counterfactual Shock Lab")
 
 
 def make_decision_fig(signal: dict[str, object]) -> go.Figure:
@@ -233,3 +233,261 @@ def make_decision_fig(signal: dict[str, object]) -> go.Figure:
     fig.update_yaxes(title_text="landscape amplitude")
     fig.update_xaxes(title_text="filtration scale")
     return _layout(fig, f"Decision Boundary Navigator: {signal['decision']} ({signal['normalized_signal']:.2f})")
+
+
+def make_multiparameter_fig(result) -> go.Figure:
+    """Plot Hilbert slices and signed multiparameter mass."""
+
+    hilbert = result.hilbert_frame.copy()
+    signed = result.signed_measure.copy()
+    fig = make_subplots(
+        rows=1,
+        cols=3,
+        specs=[[{"type": "heatmap"}, {"type": "heatmap"}, {"type": "scatter3d"}]],
+        subplot_titles=("Hilbert H0 slice", "Hilbert H1 slice", f"Signed measure ({result.backend})"),
+    )
+    if not hilbert.empty:
+        mid_k = int(hilbert["axis_k"].median()) if "axis_k" in hilbert else None
+        for col, degree in [(1, 0), (2, 1)]:
+            subset = hilbert[hilbert["degree"] == degree]
+            if mid_k is not None:
+                subset = subset[subset["axis_k"] == mid_k]
+            pivot = subset.pivot_table(index="lambda_2", columns="lambda_1", values="hilbert_value", aggfunc="mean")
+            fig.add_trace(
+                go.Heatmap(
+                    x=pivot.columns,
+                    y=pivot.index,
+                    z=pivot.to_numpy(),
+                    colorscale=[[0, "#102522"], [0.5, "#78dcca"], [1, "#f7c948"]],
+                    colorbar={"title": f"H{degree}"} if col == 2 else None,
+                    showscale=col == 2,
+                ),
+                row=1,
+                col=col,
+            )
+    if not signed.empty:
+        fig.add_trace(
+            go.Scatter3d(
+                x=signed["lambda_1"],
+                y=signed["lambda_2"],
+                z=signed["lambda_3"],
+                mode="markers",
+                marker={
+                    "size": np.clip(np.abs(signed.get("weight", pd.Series(np.ones(len(signed))))).to_numpy(dtype=float) * 9 + 3, 3, 18),
+                    "color": signed.get("weight", pd.Series(np.zeros(len(signed)))),
+                    "colorscale": [[0, "#ff6b6b"], [0.5, "#f1f6f3"], [1, "#78dcca"]],
+                    "opacity": 0.72,
+                },
+                hovertemplate="lambda=(%{x:.2f}, %{y:.2f}, %{z:.2f})<extra></extra>",
+            ),
+            row=1,
+            col=3,
+        )
+    fig.update_xaxes(title_text="lambda 1", row=1, col=1)
+    fig.update_yaxes(title_text="lambda 2", row=1, col=1)
+    fig.update_xaxes(title_text="lambda 1", row=1, col=2)
+    fig.update_yaxes(title_text="lambda 2", row=1, col=2)
+    fig.update_scenes(xaxis_title="lambda 1", yaxis_title="lambda 2", zaxis_title="lambda 3", bgcolor="#09100f")
+    title = "Multiparameter Persistence Lab"
+    if not result.exact:
+        title += " (fallback certified)"
+    return _layout(fig, title)
+
+
+def make_silhouette_fig(suite: dict[str, object]) -> go.Figure:
+    """Plot persistence silhouettes and Betti curves against baseline."""
+
+    frame = suite["frame"].copy()
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        subplot_titles=("H0 silhouette", "H1 silhouette", "H0 Betti curve", "H1 Betti curve"),
+    )
+    for col, homology in [(1, "H0"), (2, "H1")]:
+        subset = frame[frame["homology"] == homology]
+        fig.add_trace(go.Scatter(x=subset["scale"], y=subset["baseline_silhouette"], mode="lines", name=f"{homology} baseline", line={"color": "#78dcca"}), row=1, col=col)
+        fig.add_trace(go.Scatter(x=subset["scale"], y=subset["current_silhouette"], mode="lines", name=f"{homology} current", line={"color": "#ff6b6b"}), row=1, col=col)
+        fig.add_trace(go.Scatter(x=subset["scale"], y=subset["baseline_betti"], mode="lines", showlegend=False, line={"color": "#78dcca"}), row=2, col=col)
+        fig.add_trace(go.Scatter(x=subset["scale"], y=subset["current_betti"], mode="lines", showlegend=False, line={"color": "#ff6b6b"}), row=2, col=col)
+    fig.update_xaxes(title_text="filtration scale")
+    fig.update_yaxes(title_text="silhouette", row=1)
+    fig.update_yaxes(title_text="beta", row=2)
+    return _layout(fig, "Persistence Silhouettes and Betti Curves")
+
+
+def make_boundary_fig(boundary: pd.DataFrame) -> go.Figure:
+    """Plot sampled biography-space decision boundary."""
+
+    if boundary.empty:
+        return _layout(go.Figure(), "Topological Decision Boundary")
+    fig = go.Figure()
+    fig.add_trace(
+        go.Heatmap(
+            x=sorted(boundary["annual_income"].unique()),
+            y=sorted(boundary["dti_max"].unique()),
+            z=boundary.pivot_table(index="dti_max", columns="annual_income", values="normalized_signal", aggfunc="mean").to_numpy(),
+            colorscale=[[0, "#ff6b6b"], [0.5, "#102522"], [1, "#78dcca"]],
+            colorbar={"title": "S(B)"},
+        )
+    )
+    edge = boundary[boundary["boundary"]]
+    if not edge.empty:
+        fig.add_trace(
+            go.Scatter(
+                x=edge["annual_income"],
+                y=edge["dti_max"],
+                mode="markers",
+                marker={"symbol": "x", "size": 10, "color": "#f7c948", "line": {"width": 2}},
+                name="boundary",
+                customdata=edge[["decision", "h1_longest_persistence", "restricted_count"]],
+                hovertemplate="$%{x:,.0f}<br>DTI %{y:.2f}<br>%{customdata[0]}<br>H1 %{customdata[1]:.3f}<br>%{customdata[2]} homes<extra></extra>",
+            )
+        )
+    fig.update_xaxes(title_text="annual income")
+    fig.update_yaxes(title_text="DTI max")
+    return _layout(fig, "Topological Decision Boundary")
+
+
+def make_gp_regime_fig(training_frame: pd.DataFrame, prediction: dict[str, object]) -> go.Figure:
+    """Plot GP training regimes and current prediction."""
+
+    fig = go.Figure()
+    if not training_frame.empty:
+        color_map = {"Stable": "#78dcca", "Overheated": "#f7c948", "Crash": "#ff6b6b", "Opportunity": "#9bd67d"}
+        fig.add_trace(
+            go.Scatter(
+                x=training_frame["date"],
+                y=training_frame["f7"],
+                mode="markers+lines",
+                marker={"size": 10, "color": [color_map.get(label, "#f1f6f3") for label in training_frame["regime"]]},
+                customdata=training_frame[["regime"]],
+                hovertemplate="%{x|%b %Y}<br>peak curvature %{y:.2f}<br>%{customdata[0]}<extra></extra>",
+            )
+        )
+    fig.add_annotation(
+        text=f"Current regime: {prediction.get('regime')} ({prediction.get('backend')})",
+        xref="paper",
+        yref="paper",
+        x=0.02,
+        y=0.96,
+        showarrow=False,
+        font={"size": 15, "color": "#f1f6f3"},
+    )
+    fig.update_yaxes(title_text="Euler curvature peak")
+    fig.update_xaxes(title_text="training month")
+    return _layout(fig, "Gaussian Process Regime Classifier")
+
+
+def make_validation_price_fig(price_result: dict) -> go.Figure:
+    """Predicted vs Actual scatter with identity line."""
+    monthly = price_result.get("monthly_df")
+    fig = go.Figure()
+    if monthly is not None and not monthly.empty:
+        fig.add_trace(
+            go.Scatter(
+                x=monthly["median_listing_price"] if "median_listing_price" in monthly else monthly["monthly_rent_estimate"],
+                y=monthly["syn_median"] if "syn_median" in monthly else monthly["monthly_rent_estimate"],
+                mode="markers",
+                marker={"size": 8, "color": "#78dcca", "opacity": 0.7},
+                name="Monthly median",
+                hovertemplate="Actual: $%{x:,.0f}<br>Predicted: $%{y:,.0f}<extra></extra>",
+            )
+        )
+        # Identity line
+        vals = monthly.iloc[:, 1:3].to_numpy(dtype=float).flatten()
+        vals = vals[~np.isnan(vals)]
+        if len(vals) > 0:
+            lo, hi = float(np.min(vals)), float(np.max(vals))
+            fig.add_trace(
+                go.Scatter(x=[lo, hi], y=[lo, hi], mode="lines", line={"color": "#f7c948", "dash": "dash", "width": 1},
+                           name="Identity", hoverinfo="skip")
+            )
+    fig.update_xaxes(title_text="Actual")
+    fig.update_yaxes(title_text="Predicted")
+    mode = price_result.get("mode", "unknown")
+    rmse = price_result.get("rmse")
+    r2 = price_result.get("r2")
+    title = f"Predicted vs Actual ({mode})"
+    if rmse is not None:
+        title += f" — RMSE=${rmse:,.0f}"
+    if r2 is not None and not np.isnan(r2):
+        title += f", R²={r2:.3f}"
+    return _layout(fig, title)
+
+
+def make_validation_residual_fig(price_result: dict) -> go.Figure:
+    """Residual error over time."""
+    monthly = price_result.get("monthly_df")
+    fig = go.Figure()
+    if monthly is not None and not monthly.empty and "residual" in monthly.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=monthly["date"],
+                y=monthly["residual"],
+                mode="lines+markers",
+                line={"color": "#ff6b6b", "width": 2},
+                marker={"size": 6},
+                name="Residual",
+                hovertemplate="%{x|%b %Y}<br>Residual: $%{y:,.0f}<extra></extra>",
+            )
+        )
+        fig.add_hline(y=0, line={"color": "#8ba19a", "width": 0.8, "dash": "dash"})
+    fig.update_xaxes(title_text="Date")
+    fig.update_yaxes(title_text="Residual ($)")
+    return _layout(fig, "Residual Error Over Time")
+
+
+def make_validation_zip_fig(zip_errors: pd.DataFrame) -> go.Figure:
+    """ZIP-level deviation bar chart."""
+    fig = go.Figure()
+    if not zip_errors.empty:
+        colors = ["#ff6b6b" if abs(v) > 15 else ("#f7c948" if abs(v) > 8 else "#78dcca") for v in zip_errors["metro_deviation_pct"]]
+        fig.add_trace(
+            go.Bar(
+                x=zip_errors["zip_code"],
+                y=zip_errors["metro_deviation_pct"],
+                marker={"color": colors},
+                text=zip_errors["metro_deviation_pct"].apply(lambda v: f"{v:+.1f}%"),
+                textposition="outside",
+                hovertemplate="%{x}<br>Median: $%{customdata:,.0f}<br>Deviation: %{y:+.1f}%<extra></extra>",
+                customdata=zip_errors["median_price"],
+            )
+        )
+    fig.update_xaxes(title_text="ZIP Code")
+    fig.update_yaxes(title_text="Deviation from Metro Median (%)")
+    return _layout(fig, "ZIP-Level Price Deviation")
+
+
+def make_validation_regime_fig(regime_result: dict) -> go.Figure:
+    """Confusion matrix heatmap for regime classification."""
+    labels = regime_result.get("confusion_labels", [])
+    matrix = regime_result.get("confusion_matrix", [])
+    if not matrix or not labels:
+        return _layout(go.Figure(), "Regime Classification Report")
+    accuracy = regime_result.get("accuracy")
+    title = "Regime Classification Report"
+    if accuracy is not None:
+        title += f" — Accuracy: {accuracy:.1%}"
+
+    # Row-normalize for heatmap
+    mat = np.array(matrix, dtype=float)
+    row_sums = mat.sum(axis=1, keepdims=True)
+    row_sums[row_sums == 0] = 1
+    mat_norm = mat / row_sums
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=mat_norm,
+            x=labels,
+            y=labels,
+            colorscale=[[0, "#102522"], [0.5, "#78dcca"], [1, "#f7c948"]],
+            text=[[f"{int(v)}" for v in row] for row in mat],
+            texttemplate="%{text}",
+            textfont={"color": "#f1f6f3"},
+            hovertemplate="Actual: %{y}<br>Predicted: %{x}<br>Count: %{text}<extra></extra>",
+            colorbar={"title": "Fraction"},
+        )
+    )
+    fig.update_xaxes(title_text="Predicted")
+    fig.update_yaxes(title_text="Actual")
+    return _layout(fig, title)

@@ -1,0 +1,57 @@
+{
+  "statuses": {
+    "fred": {
+      "fetched": true,
+      "path": "C:\\Users\\Right\\.codex\\ttas\\data\\processed\\fred_monthly.csv",
+      "row_count": 953,
+      "columns": [
+        "date",
+        "30_year_mortgage_rate",
+        "cpi_all_urban",
+        "unemployment_rate",
+        "median_sales_price_us"
+      ]
+    },
+    "census": {
+      "fetched": true,
+      "path": "C:\\Users\\Right\\.codex\\ttas\\data\\processed\\census_zip_metrics.csv",
+      "zip_count": 24
+    },
+    "realtor": {
+      "files_found": 1,
+      "files_imported": 1,
+      "path": "C:\\Users\\Right\\.codex\\ttas\\data\\processed\\realtor_monthly.csv",
+      "row_count": 119
+    },
+    "timeseries": {
+      "path": "C:\\Users\\Right\\.codex\\ttas\\data\\processed\\tulsa_market_timeseries.csv",
+      "row_count": 953,
+      "columns": [
+        "date",
+        "30_year_mortgage_rate",
+        "cpi_all_urban",
+        "unemployment_rate",
+        "median_sales_price_us",
+        "median_listing_price",
+        "active_listing_count",
+        "median_days_on_market"
+      ],
+      "date_range": [
+        "1947-01-01 00:00:00",
+        "2026-05-01 00:00:00"
+      ],
+      "sources": {
+        "fred": [
+          "1947-01-01 00:00:00",
+          "2026-05-01 00:00:00"
+        ],
+        "realtor": [
+          "1970-01-01 00:00:00",
+          "2026-04-01 00:00:00"
+        ]
+      }
+    }
+  },
+  "manifest_mode": "real_public_data",
+  "last_updated": "2026-05-14T03:12:00Z"
+}

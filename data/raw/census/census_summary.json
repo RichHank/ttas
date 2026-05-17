@@ -1,0 +1,9 @@
+{
+  "source": "Census ACS",
+  "fetched": true,
+  "error": null,
+  "zip_metrics_path": "C:\\Users\\Right\\.codex\\ttas\\data\\processed\\tulsa_zip_metrics.json",
+  "geo_levels": [
+    "tulsa_zips"
+  ]
+}
